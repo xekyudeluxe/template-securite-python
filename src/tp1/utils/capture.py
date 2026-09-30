@@ -1,11 +1,21 @@
 from src.tp1.utils.lib import choose_interface
 from tp1.utils.config import logger
-
+from scapy.all import ARP, DNS, ICMP, IP, TCP, UDP, Ether, Raw, rdpcap, sniff
 
 class Capture:
-    def __init__(self) -> None:
-        self.interface = choose_interface()
+    def __init__(self, pcap=None) -> None:
+        self.pcap = pcap
+        self.packets = []
+        self.protocols = {}
+        self.attacks = []
+        self.flag = ""
         self.summary = ""
+
+        # Si on a un fichier pcap, pas besoin de choisir une interface.
+        if pcap:
+            self.interface = None
+        else:
+            self.interface = choose_interface()
 
     def capture_traffic(self) -> None:
         """
