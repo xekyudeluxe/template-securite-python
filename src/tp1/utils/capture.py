@@ -74,11 +74,6 @@ class Capture:
             texte += f"{nom} : {self.protocols[nom]}\n"
         return texte
 
-    def get_all_protocols(self) -> str:
-        """
-        Return all protocols captured with total packets number
-        """
-        return ""
 
     def analyse(self, protocols: str) -> None:
         """
