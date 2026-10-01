@@ -34,7 +34,13 @@ class Capture:
         """
         Sort and return all captured network protocols
         """
-        return ""
+        pairs = list(self.protocols.items())
+        pairs.sort(key=lambda p: p[1], reverse=True)
+
+        texte = ""
+        for nom, nombre in pairs:
+            texte += f"{nom} : {nombre}\n"
+        return texte
 
     def add_one(self, nom) -> None:
         """
