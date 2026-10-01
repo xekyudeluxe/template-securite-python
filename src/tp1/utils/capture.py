@@ -180,6 +180,10 @@ class Capture:
         self.detect_port_scan()
         self.detect_sql_injection()
         self.find_flag()
+
+        if not self.attacks:
+            logger.info("Aucune attaque detectee, tout va bien.")
+
         self.summary = self._gen_summary()
 
     def get_summary(self) -> str:
@@ -194,4 +198,14 @@ class Capture:
         Generate summary
         """
         summary = ""
+        summary += "Protocoles :\n"
+        summary += self.sort_network_protocols()
+        summary += "\nAttaques :\n"
+        if self.attacks:
+            for a in self.attacks:
+                summary += f"- {a['type']} depuis {a['attacker']}\n"
+        else:
+            summary += "Aucune attaque.\n"
+        if self.flag:
+            summary += f"\nFlag : {self.flag}\n"
         return summary
