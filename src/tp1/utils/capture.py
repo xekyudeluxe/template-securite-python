@@ -121,6 +121,31 @@ class Capture:
                 self.attacks.append({"type": "port_scan", "attacker": src})
                 logger.warning(f"Scan de ports depuis {src}")
 
+    def detect_sql_injection(self) -> None:
+        """
+        Injection SQL = motifs suspects dans le trafic (' OR 1=1, UNION SELECT...).
+        """
+        motifs = ["or 1=1", "union select", "'1'='1"]
+        deja_vus = []
+        for pkt in self.packets:
+            if not pkt.haslayer(Raw):
+                continue
+
+            brut = bytes(pkt[Raw].load)
+            texte = brut.decode(errors="ignore")
+            texte = texte.lower()
+
+            for motif in motifs:
+                if motif in texte:
+                    if pkt.haslayer(IP):
+                        attaquant = pkt[IP].src
+                    else:
+                        attaquant = "inconnu"
+                    if attaquant not in deja_vus:
+                        deja_vus.append(attaquant)
+                        self.attacks.append({"type": "sql_injection", "attacker": attaquant})
+                        logger.warning(f"Injection SQL depuis {attaquant}")
+                    break
 
     def analyse(self, protocols: str) -> None:
         """
@@ -140,6 +165,7 @@ class Capture:
         logger.debug(f"Sorted protocols: {sort}")
         self.detect_arp_spoofing()
         self.detect_port_scan()
+        self.detect_sql_injection()
         self.summary = self._gen_summary()
 
     def get_summary(self) -> str:
