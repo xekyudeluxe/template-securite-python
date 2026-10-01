@@ -30,38 +30,6 @@ class Capture:
             self.packets = sniff(iface=self.interface, timeout=30)
 
         logger.info(f"{len(self.packets)} paquets captures")
-    def sort_network_protocols(self) -> str:
-        """
-        Sort and return all captured network protocols
-        """
-        pairs = list(self.protocols.items())
-        pairs.sort(key=lambda p: p[1], reverse=True)
-
-        texte = ""
-        for nom, nombre in pairs:
-            texte += f"{nom} : {nombre}\n"
-        return texte
-
-    def detect_arp_spoofing(self) -> None:
-        """
-        ARP spoofing = plusieurs adresses MAC pour une meme IP.
-        """
-        ip_vers_mac = {}
-        for pkt in self.packets:
-            if pkt.haslayer(ARP) and pkt[ARP].op == 2:  # 2 = reponse ARP
-                ip = pkt[ARP].psrc
-                mac = pkt[ARP].hwsrc
-                if ip not in ip_vers_mac:
-                    ip_vers_mac[ip] = []
-                if mac not in ip_vers_mac[ip]:
-                    ip_vers_mac[ip].append(mac)
-
-        for ip in ip_vers_mac:
-            if len(ip_vers_mac[ip]) > 1:
-                attaquant = ip_vers_mac[ip][-1]
-                self.attacks.append({"type": "arp_spoofing", "attacker": attaquant})
-                logger.warning(f"ARP spoofing : IP {ip}")
-
 
     def add_one(self, nom) -> None:
         """
@@ -101,6 +69,58 @@ class Capture:
             texte += f"{nom} : {self.protocols[nom]}\n"
         return texte
 
+    def sort_network_protocols(self) -> str:
+        """
+        Sort and return all captured network protocols
+        """
+        pairs = list(self.protocols.items())
+        pairs.sort(key=lambda p: p[1], reverse=True)
+
+        texte = ""
+        for nom, nombre in pairs:
+            texte += f"{nom} : {nombre}\n"
+        return texte
+
+    def detect_arp_spoofing(self) -> None:
+        """
+        ARP spoofing = plusieurs adresses MAC pour une meme IP.
+        """
+        ip_vers_mac = {}
+        for pkt in self.packets:
+            if pkt.haslayer(ARP) and pkt[ARP].op == 2:  # 2 = reponse ARP
+                ip = pkt[ARP].psrc
+                mac = pkt[ARP].hwsrc
+                if ip not in ip_vers_mac:
+                    ip_vers_mac[ip] = []
+                if mac not in ip_vers_mac[ip]:
+                    ip_vers_mac[ip].append(mac)
+
+        for ip in ip_vers_mac:
+            if len(ip_vers_mac[ip]) > 1:
+                attaquant = ip_vers_mac[ip][-1]
+                self.attacks.append({"type": "arp_spoofing", "attacker": attaquant})
+                logger.warning(f"ARP spoofing : IP {ip}")
+
+    def detect_port_scan(self) -> None:
+        """
+        Scan de ports = une IP envoie des SYN vers beaucoup de ports differents.
+        """
+        ports_par_ip = {}
+        for pkt in self.packets:
+            if pkt.haslayer(TCP) and pkt.haslayer(IP):
+                if pkt[TCP].flags == "S":  # SYN seul = tentative de connexion
+                    src = pkt[IP].src
+                    port = pkt[TCP].dport
+                    if src not in ports_par_ip:
+                        ports_par_ip[src] = []
+                    if port not in ports_par_ip[src]:
+                        ports_par_ip[src].append(port)
+
+        for src in ports_par_ip:
+            if len(ports_par_ip[src]) > 20:
+                self.attacks.append({"type": "port_scan", "attacker": src})
+                logger.warning(f"Scan de ports depuis {src}")
+
 
     def analyse(self, protocols: str) -> None:
         """
@@ -119,6 +139,7 @@ class Capture:
         logger.debug(f"All protocols: {all_protocols}")
         logger.debug(f"Sorted protocols: {sort}")
         self.detect_arp_spoofing()
+        self.detect_port_scan()
         self.summary = self._gen_summary()
 
     def get_summary(self) -> str:
