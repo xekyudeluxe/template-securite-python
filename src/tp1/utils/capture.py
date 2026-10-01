@@ -147,6 +147,19 @@ class Capture:
                         logger.warning(f"Injection SQL depuis {attaquant}")
                     break
 
+    def find_flag(self) -> None:
+        """
+        Cherche le flag ESGI{...} cache dans les paquets.
+        """
+        for pkt in self.packets:
+            data = bytes(pkt)
+            if b"ESGI{" in data:
+                debut = data.find(b"ESGI{")
+                fin = data.find(b"}", debut) + 1
+                self.flag = data[debut:fin].decode(errors="ignore")
+                logger.info(f"Flag trouve : {self.flag}")
+                return
+
     def analyse(self, protocols: str) -> None:
         """
         Analyse all captured data and return statement
@@ -166,6 +179,7 @@ class Capture:
         self.detect_arp_spoofing()
         self.detect_port_scan()
         self.detect_sql_injection()
+        self.find_flag()
         self.summary = self._gen_summary()
 
     def get_summary(self) -> str:
