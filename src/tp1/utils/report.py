@@ -1,3 +1,7 @@
+import json
+
+from fpdf import FPDF
+
 from tp1.utils.capture import Capture
 
 
@@ -5,7 +9,7 @@ class Report:
     def __init__(self, capture: Capture, filename: str, summary: str):
         self.capture = capture
         self.filename = filename
-        self.title = "TITRE DU RAPPORT"
+        self.title = "Rapport TP1 - IDS/IPS maison"
         self.summary = summary
         self.array = ""
         self.graph = ""
@@ -18,29 +22,57 @@ class Report:
         content += self.title
         content += self.summary
         content += self.array
-        content += self.graph
-
         return content
-
-    def save(self, filename: str) -> None:
-        """
-        Save report in a file
-        :param filename:
-        :return:
-        """
-        final_content = self.concat_report()
-        with open(self.filename, "w") as report:
-            report.write(final_content)
 
     def generate(self, param: str) -> None:
         """
-        Generate graph and array
+        Generate array
         """
-        if param == "graph":
-            # TODO: generate graph
-            graph = ""
-            self.graph = graph
-        elif param == "array":
-            # TODO: generate array
-            array = ""
-            self.array = array
+        if param == "array":
+            self.array = self.make_array()
+
+    def make_array(self) -> str:
+        """
+        Fait le tableau des protocoles en texte.
+        """
+        texte = ""
+        for nom in self.capture.protocols:
+            texte += f"{nom} : {self.capture.protocols[nom]}\n"
+        return texte
+
+    def save(self, filename: str) -> None:
+        """
+        Save report in a PDF file
+        """
+        pdf = FPDF()
+        pdf.add_page()
+
+        pdf.set_font("Helvetica", size=14)
+        pdf.cell(0, 10, self.title, ln=True)
+        pdf.ln(5)
+
+        pdf.cell(0, 10, "Protocoles :", ln=True)
+        for nom in self.capture.protocols:
+            pdf.cell(0, 8, f"{nom} : {self.capture.protocols[nom]}", ln=True)
+        pdf.ln(5)
+
+        pdf.cell(0, 10, "Attaques :", ln=True)
+        if self.capture.attacks:
+            for attaque in self.capture.attacks:
+                pdf.cell(0, 8, f"- {attaque['type']} depuis {attaque['attacker']}", ln=True)
+        else:
+            pdf.cell(0, 8, "Aucune attaque.", ln=True)
+
+        pdf.output(filename)
+
+    def write_json(self, out="report.json") -> None:
+        """
+        Write the report.json file
+        """
+        data = {
+            "protocols": self.capture.protocols,
+            "attacks": self.capture.attacks,
+            "flag": self.capture.flag,
+        }
+        with open(out, "w") as f:
+            json.dump(data, f, indent=2)

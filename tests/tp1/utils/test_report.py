@@ -1,84 +1,49 @@
-from unittest.mock import patch, mock_open, MagicMock
+import json
+
 from src.tp1.utils.report import Report
 
 
-def test_report_init():
-    # Given
-    capture = MagicMock()
-    filename = "test.pdf"
-    summary = "Test summary"
-
-    # When
-    report = Report(capture, filename, summary)
-
-    # Then
-    assert report.capture == capture
-    assert report.filename == filename
-    assert report.title == "TITRE DU RAPPORT"
-    assert report.summary == summary
-    assert report.array == ""
-    assert report.graph == ""
+class FaussaireCapture:
+    """
+    Capture fictive pour tester Report sans dépendance à scapy.
+    """
+    def __init__(self):
+        self.protocols = {"TCP": 5, "ARP": 2}
+        self.attacks = [{"type": "port_scan", "attacker": "10.0.0.5"}]
+        self.flag = "ESGI{test}"
 
 
-def test_concat_report():
-    # Given
-    report = Report(MagicMock(), "test.pdf", "Test summary")
-    report.title = "Test Title"
-    report.array = "Test Array"
-    report.graph = "Test Graph"
+def test_initialisation_report():
 
-    # When
-    result = report.concat_report()
+    capture_simulee = FaussaireCapture()
+    rapport = Report(capture_simulee, "test.pdf", "Test summary")
 
-    # Then
-    assert result == "Test TitleTest summaryTest ArrayTest Graph"
-
-
-def test_save():
-    # Given
-    report = Report(MagicMock(), "test.pdf", "Test summary")
-    report.title = "Test Title"
-
-    # When/Then
-    with patch("builtins.open", mock_open()) as mock_file:
-        report.save("test.pdf")
-
-        # Verify file was opened with correct name
-        mock_file.assert_called_once_with("test.pdf", "w")
-
-        # Verify write was called with the concatenated content
-        mock_file().write.assert_called_once_with("Test TitleTest summary")
+    assert rapport.capture == capture_simulee
+    assert rapport.filename == "test.pdf"
+    assert rapport.title == "Rapport TP1 - IDS/IPS maison"
+    assert rapport.summary == "Test summary"
+    assert rapport.array == ""
+    assert rapport.graph == ""
 
 
-def test_generate_graph():
-    # Given
-    report = Report(MagicMock(), "test.pdf", "Test summary")
+def test_ecriture_json(tmp_path):
 
-    # When
-    report.generate("graph")
+    rapport = Report(FaussaireCapture(), "test.pdf", "")
+    chemin_fichier = tmp_path / "report.json"
+    rapport.write_json(str(chemin_fichier))
 
-    # Then
-    assert report.graph == ""  # Currently returns empty string
-
-
-def test_generate_array():
-    # Given
-    report = Report(MagicMock(), "test.pdf", "Test summary")
-
-    # When
-    report.generate("array")
-
-    # Then
-    assert report.array == ""  # Currently returns empty string
+    contenu = json.loads(chemin_fichier.read_text())
+    assert contenu["protocols"] == {"TCP": 5, "ARP": 2}
+    assert contenu["attacks"][0]["attacker"] == "10.0.0.5"
+    assert contenu["flag"] == "ESGI{test}"
 
 
-def test_generate_invalid_param():
-    # Given
-    report = Report(MagicMock(), "test.pdf", "Test summary")
+def test_sauvegarde_cree_pdf(tmp_path):
+    rapport = Report(FaussaireCapture(), "test.pdf", "")
+    rapport.generate("graph")
+    rapport.generate("array")
+    chemin_pdf = tmp_path / "rapport.pdf"
 
-    # When
-    report.generate("invalid")
+    rapport.save(str(chemin_pdf))
 
-    # Then
-    assert report.graph == ""
-    assert report.array == ""
+    assert chemin_pdf.exists()

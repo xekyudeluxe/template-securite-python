@@ -1,10 +1,12 @@
 from unittest.mock import patch
+
 from src.tp1.utils.capture import Capture
 
 
 def test_capture_init():
-    # When
-    capture = Capture()
+    #on simule le choix d'interface pour ne pas bloquer
+    with patch("src.tp1.utils.capture.choose_interface", return_value=""):
+        capture = Capture()
 
     # Then
     assert capture.interface == ""
@@ -12,44 +14,42 @@ def test_capture_init():
 
 
 def test_given_capture_when_capture_traffic_then_interface_is_set():
-    # Given
-    capture = Capture()
 
-    # When
-    capture.capture_traffic()
+    with patch("src.tp1.utils.capture.choose_interface", return_value=""):
+        capture = Capture()
 
-    # Then
-    # This is a minimal test since the method doesn't do much yet
+    #on simule sniff pour ne pas vraiment capturer
+    with patch("src.tp1.utils.capture.sniff", return_value=[]):
+        capture.capture_traffic()
+
+
     assert capture.interface == ""
 
 
 def test_sort_network_protocols():
-    # Given
-    capture = Capture()
 
-    # When
+    with patch("src.tp1.utils.capture.choose_interface", return_value=""):
+        capture = Capture()
+
     result = capture.sort_network_protocols()
-
-    # Then
-    assert result == ""  # Method currently returns None
+    assert result == ""
 
 
 def test_get_all_protocols():
-    # Given
-    capture = Capture()
 
-    # When
+    with patch("src.tp1.utils.capture.choose_interface", return_value=""):
+        capture = Capture()
+
     result = capture.get_all_protocols()
-
-    # Then
-    assert result == ""  # Method currently returns None
+    assert result == ""
 
 
 def test_analyse():
-    # Given
-    capture = Capture()
 
-    # When
+    with patch("src.tp1.utils.capture.choose_interface", return_value=""):
+        capture = Capture()
+
+
     with (
         patch.object(capture, "get_all_protocols") as mock_get_protocols,
         patch.object(capture, "sort_network_protocols") as mock_sort,
@@ -58,7 +58,7 @@ def test_analyse():
         mock_gen_summary.return_value = "Test summary"
         capture.analyse("tcp")
 
-    # Then
+
     mock_get_protocols.assert_called_once()
     mock_sort.assert_called_once()
     mock_gen_summary.assert_called_once()
@@ -66,23 +66,22 @@ def test_analyse():
 
 
 def test_get_summary():
-    # Given
-    capture = Capture()
+
+    with patch("src.tp1.utils.capture.choose_interface", return_value=""):
+        capture = Capture()
     capture.summary = "Test summary"
 
-    # When
-    result = capture.get_summary()
 
-    # Then
+    result = capture.get_summary()
     assert result == "Test summary"
 
 
 def test_gen_summary():
-    # Given
-    capture = Capture()
 
-    # When
+    with patch("src.tp1.utils.capture.choose_interface", return_value=""):
+        capture = Capture()
+
     result = capture._gen_summary()
 
-    # Then
-    assert result == ""  # Method currently returns empty string
+    #le resume contient au moins la section Protocoles
+    assert "Protocoles" in result
