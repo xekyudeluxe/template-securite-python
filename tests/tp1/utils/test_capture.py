@@ -83,5 +83,5 @@ def test_gen_summary():
 
     result = capture._gen_summary()
 
-    le resume contient au moins la section Protocoles
+    #le resume contient au moins la section Protocoles
     assert "Protocoles" in result
