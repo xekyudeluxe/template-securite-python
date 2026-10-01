@@ -1,20 +1,22 @@
-from src.tp1.utils.lib import hello_world, choose_interface
+from unittest.mock import patch
+
+from src.tp1.utils.lib import choose_interface, hello_world
 
 
-def test_when_hello_world_then_return_hello_world():
-    # Given
-    string = "hello world"
-
+def test_hello_world():
     # When
     result = hello_world()
 
     # Then
-    assert result == string
+    assert result == "hello world"
 
 
-def test_when_choose_interface_then_return_empty_string():
-    # When
-    result = choose_interface()
+def test_choose_interface():
+    #on simule la liste des interfaces et le choix de l'utilisateur
+    with patch("src.tp1.utils.lib.get_if_list", return_value=["eth0", "wlan0"]):
+        with patch("builtins.input", return_value="0"):
+            # When
+            result = choose_interface()
 
-    # Then
-    assert result == ""
+    #on a choisi le numero 0, donc eth0
+    assert result == "eth0"
