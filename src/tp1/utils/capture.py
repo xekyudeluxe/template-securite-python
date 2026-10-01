@@ -1,4 +1,5 @@
 from scapy.all import ARP, DNS, ICMP, IP, TCP, UDP, Ether, Raw, rdpcap, sniff
+
 from src.tp1.utils.lib import choose_interface
 from tp1.utils.config import logger
 
@@ -7,8 +8,8 @@ class Capture:
     def __init__(self, pcap=None) -> None:
         self.pcap = pcap
         self.packets = []
-        self.protocols = {}
-        self.attacks = []
+        self.protocols = {}   # ex : {"TCP": 128, "ARP": 12}
+        self.attacks = []     # ex : [{"type": "arp_spoofing", "attacker": "aa:bb:.."}]
         self.flag = ""
         self.summary = ""
 
@@ -30,11 +31,6 @@ class Capture:
             self.packets = sniff(iface=self.interface, timeout=30)
 
         logger.info(f"{len(self.packets)} paquets captures")
-    def sort_network_protocols(self) -> str:
-        """
-        Sort and return all captured network protocols
-        """
-        return ""
 
     def add_one(self, nom) -> None:
         """
@@ -74,35 +70,131 @@ class Capture:
             texte += f"{nom} : {self.protocols[nom]}\n"
         return texte
 
-    def get_all_protocols(self) -> str:
+    def sort_network_protocols(self) -> str:
         """
-        Return all protocols captured with total packets number
+        Renvoie les protocoles tries du plus frequent au moins frequent.
         """
-        return ""
+        pairs = list(self.protocols.items())
+        pairs.sort(key=lambda p: p[1], reverse=True)
+
+        texte = ""
+        for nom, nombre in pairs:
+            texte += f"{nom} : {nombre}\n"
+        return texte
+
+    def detect_arp_spoofing(self) -> None:
+        """
+        ARP spoofing = plusieurs adresses MAC pour une meme IP.
+        """
+        ip_vers_mac = {}
+        for pkt in self.packets:
+            if pkt.haslayer(ARP) and pkt[ARP].op == 2:  # 2 = reponse ARP
+                ip = pkt[ARP].psrc
+                mac = pkt[ARP].hwsrc
+                if ip not in ip_vers_mac:
+                    ip_vers_mac[ip] = []
+                if mac not in ip_vers_mac[ip]:
+                    ip_vers_mac[ip].append(mac)
+
+        for ip in ip_vers_mac:
+            if len(ip_vers_mac[ip]) > 1:
+                attaquant = ip_vers_mac[ip][-1]
+                self.attacks.append({"type": "arp_spoofing", "attacker": attaquant})
+                logger.warning(f"ARP spoofing : IP {ip}")
+
+    def detect_port_scan(self) -> None:
+        """
+        Scan de ports = une IP envoie des SYN vers beaucoup de ports differents.
+        """
+        ports_par_ip = {}
+        for pkt in self.packets:
+            if pkt.haslayer(TCP) and pkt.haslayer(IP):
+                if pkt[TCP].flags == "S":  # SYN seul = tentative de connexion
+                    src = pkt[IP].src
+                    port = pkt[TCP].dport
+                    if src not in ports_par_ip:
+                        ports_par_ip[src] = []
+                    if port not in ports_par_ip[src]:
+                        ports_par_ip[src].append(port)
+
+        for src in ports_par_ip:
+            if len(ports_par_ip[src]) > 20:
+                self.attacks.append({"type": "port_scan", "attacker": src})
+                logger.warning(f"Scan de ports depuis {src}")
+
+    def detect_sql_injection(self) -> None:
+        """
+        Injection SQL = motifs suspects dans le trafic (' OR 1=1, UNION SELECT...).
+        """
+        motifs = ["or 1=1", "union select", "'1'='1"]
+        deja_vus = []
+        for pkt in self.packets:
+            if not pkt.haslayer(Raw):
+                continue
+
+            brut = bytes(pkt[Raw].load)
+            texte = brut.decode(errors="ignore")
+            texte = texte.lower()
+
+            for motif in motifs:
+                if motif in texte:
+                    if pkt.haslayer(IP):
+                        attaquant = pkt[IP].src
+                    else:
+                        attaquant = "inconnu"
+                    if attaquant not in deja_vus:
+                        deja_vus.append(attaquant)
+                        self.attacks.append({"type": "sql_injection", "attacker": attaquant})
+                        logger.warning(f"Injection SQL depuis {attaquant}")
+                    break
+
+    def find_flag(self) -> None:
+        """
+        Cherche le vrai flag ESGI{...} : celui envoye par une IP attaquante.
+        Les autres flags sont des leurres.
+        """
+        # On recupere la liste des IP attaquantes deja detectees.
+        ips_attaquantes = []
+        for attaque in self.attacks:
+            ips_attaquantes.append(attaque["attacker"])
+
+        for pkt in self.packets:
+            # On ne regarde que les paquets venant d'une IP attaquante.
+            if not pkt.haslayer(IP):
+                continue
+            if pkt[IP].src not in ips_attaquantes:
+                continue
+
+            data = bytes(pkt)
+            if b"ESGI{" in data:
+                debut = data.find(b"ESGI{")
+                fin = data.find(b"}", debut) + 1
+                self.flag = data[debut:fin].decode(errors="ignore")
+                logger.info(f"Flag trouve : {self.flag}")
+                return
 
     def analyse(self, protocols: str) -> None:
         """
-        Analyse all captured data and return statement
-        Si un tra c est illégitime (exemple : Injection SQL, ARP
-        Spoo ng, etc)
-        a Noter la tentative d'attaque.
-        b Relever le protocole ainsi que l'adresse réseau/physique
-        de l'attaquant.
-        c (FACULTATIF) Opérer le blocage de la machine
-        attaquante.
-        Sinon a cher que tout va bien
+        Analyse le trafic : compte les protocoles et cherche les attaques.
         """
         all_protocols = self.get_all_protocols()
         sort = self.sort_network_protocols()
         logger.debug(f"All protocols: {all_protocols}")
         logger.debug(f"Sorted protocols: {sort}")
 
+        self.detect_arp_spoofing()
+        self.detect_port_scan()
+        self.detect_sql_injection()
+        self.find_flag()
+
+        if not self.attacks:
+            logger.info("Aucune attaque detectee, tout va bien.")
+
         self.summary = self._gen_summary()
 
     def get_summary(self) -> str:
         """
         Return summary
-        :return:
         """
         return self.summary
 
@@ -111,4 +203,14 @@ class Capture:
         Generate summary
         """
         summary = ""
+        summary += "Protocoles :\n"
+        summary += self.sort_network_protocols()
+        summary += "\nAttaques :\n"
+        if self.attacks:
+            for a in self.attacks:
+                summary += f"- {a['type']} depuis {a['attacker']}\n"
+        else:
+            summary += "Aucune attaque.\n"
+        if self.flag:
+            summary += f"\nFlag : {self.flag}\n"
         return summary
