@@ -42,6 +42,27 @@ class Capture:
             texte += f"{nom} : {nombre}\n"
         return texte
 
+    def detect_arp_spoofing(self) -> None:
+        """
+        ARP spoofing = plusieurs adresses MAC pour une meme IP.
+        """
+        ip_vers_mac = {}
+        for pkt in self.packets:
+            if pkt.haslayer(ARP) and pkt[ARP].op == 2:  # 2 = reponse ARP
+                ip = pkt[ARP].psrc
+                mac = pkt[ARP].hwsrc
+                if ip not in ip_vers_mac:
+                    ip_vers_mac[ip] = []
+                if mac not in ip_vers_mac[ip]:
+                    ip_vers_mac[ip].append(mac)
+
+        for ip in ip_vers_mac:
+            if len(ip_vers_mac[ip]) > 1:
+                attaquant = ip_vers_mac[ip][-1]
+                self.attacks.append({"type": "arp_spoofing", "attacker": attaquant})
+                logger.warning(f"ARP spoofing : IP {ip}")
+
+
     def add_one(self, nom) -> None:
         """
         Ajoute 1 au compteur d'un protocole.
@@ -97,7 +118,7 @@ class Capture:
         sort = self.sort_network_protocols()
         logger.debug(f"All protocols: {all_protocols}")
         logger.debug(f"Sorted protocols: {sort}")
-
+        self.detect_arp_spoofing()
         self.summary = self._gen_summary()
 
     def get_summary(self) -> str:
