@@ -20,7 +20,8 @@ from tp2.utils.report import generate_report
 IOC_KEYS = ["domains", "ips", "urls", "mutex", "registry"]
 
 
-def parse_args(argv=None):
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Lit les arguments --samples, --rules et --out."""
     parser = argparse.ArgumentParser(description="Triage de malware")
     parser.add_argument("--samples", required=True)
     parser.add_argument("--rules", required=True)
@@ -28,14 +29,15 @@ def parse_args(argv=None):
     return parser.parse_args(argv)
 
 
-def combine_score(score, llm_score):
-    """Le LLM peut ajuster le score de 2 points maximum : il ne décide jamais seul."""
+def combine_score(score: int, llm_score: int | None) -> int:
+    """Le LLM peut ajuster le score de 2 points maximum : il ne decide jamais seul."""
     if llm_score is None:
         return score
     return max(0, min(10, max(score - 2, min(score + 2, llm_score))))
 
 
-def analyze_file(path, rules, client):
+def analyze_file(path: Path, rules, client) -> dict:
+    """Analyse un echantillon et renvoie le resultat au format demande."""
     data = path.read_bytes()
     meta = get_file_metadata(data)
     iocs = {key: value for key, value in extract_iocs(data).items() if key in IOC_KEYS}
@@ -47,13 +49,14 @@ def analyze_file(path, rules, client):
 
     summary = {"entropy": meta["entropy"], "iocs": iocs, "apis": apis, "yara": yara_matches, "family": family}
     verdict = llm_triage(summary, client)
-    llm_summary = f"Famille probable : {family}. Règles YARA : {', '.join(yara_matches) or 'aucune'}."
+    llm_summary = f"Famille probable : {family}. Regles YARA : {', '.join(yara_matches) or 'aucune'}."
     if verdict:
         mitre = list(dict.fromkeys(mitre + verdict["mitre_attack"]))
         score = combine_score(score, verdict["score"])
         llm_summary = verdict["summary"] or llm_summary
 
     return {
+        "sample": path.name,
         **meta,
         "iocs": iocs,
         "imports": apis + parse_binary(path)["imports"],
@@ -66,7 +69,8 @@ def analyze_file(path, rules, client):
     }
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> None:
+    """Analyse tous les fichiers du dossier --samples et ecrit les rapports dans --out."""
     args = parse_args(argv)
     rules = load_rules(args.rules)
     client = LLMClient()

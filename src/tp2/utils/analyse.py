@@ -25,7 +25,8 @@ APIS = {
 }
 
 
-def entropy(data):
+def entropy(data: bytes) -> float:
+    """Entropie de Shannon des octets (0 = uniforme, 8 = aleatoire)."""
     if len(data) == 0:
         return 0.0
     compte = [0] * 256
@@ -39,7 +40,8 @@ def entropy(data):
     return res
 
 
-def get_file_metadata(data):
+def get_file_metadata(data: bytes) -> dict:
+    """SHA-256, MD5, taille, entropie et type du fichier."""
     return {
         "sha256": hashlib.sha256(data).hexdigest(),
         "md5": hashlib.md5(data).hexdigest(),
@@ -49,12 +51,13 @@ def get_file_metadata(data):
     }
 
 
-def get_strings(data):
-    # comme la commande strings : suites de caracteres lisibles (5 min)
+def get_strings(data: bytes) -> list[str]:
+    """Chaines lisibles d'au moins 5 caracteres, comme la commande strings."""
     return [s.decode() for s in re.findall(rb"[\x20-\x7e]{5,}", data)]
 
 
-def find_domains(texte):
+def find_domains(texte: str) -> list[str]:
+    """Domaines du texte, sans les noms de fichiers, sections ELF et domaines legitimes."""
     res = []
     for m in re.finditer(r"\b(?:[a-z0-9-]+\.)+([a-z]{2,24})\b", texte, re.IGNORECASE):
         domaine = m.group(0).lower()
@@ -70,7 +73,8 @@ def find_domains(texte):
     return res
 
 
-def extract_iocs(data):
+def extract_iocs(data: bytes) -> dict[str, list[str]]:
+    """Domaines, IP, URLs, mutex, cles de registre et chemins trouves dans le fichier."""
     iocs = {"domains": [], "ips": [], "urls": [], "mutex": [], "registry": [], "paths": []}
     for s in get_strings(data):
         iocs["domains"] += find_domains(s)
@@ -96,7 +100,8 @@ def extract_iocs(data):
     return iocs
 
 
-def extract_flag(data):
+def extract_flag(data: bytes) -> str:
+    """Flag qui suit FLAG= (les autres ESGI{} sont des leurres)."""
     # on prend seulement le flag apres FLAG= (les autres ESGI{} sont des pieges)
     m = re.search(r"FLAG=(ESGI\{[^}\s]+\})", data.decode("latin-1"))
     if m:
@@ -104,7 +109,8 @@ def extract_flag(data):
     return ""
 
 
-def find_apis(data):
+def find_apis(data: bytes) -> list[str]:
+    """API Windows suspectes presentes comme chaines dans le fichier."""
     mots = re.split(rb"[\x00\n]", data)
     trouvees = []
     for famille in APIS:
@@ -114,7 +120,8 @@ def find_apis(data):
     return trouvees
 
 
-def parse_binary(path):
+def parse_binary(path) -> dict[str, list[str]]:
+    """Imports, exports et sections d'un PE ou ELF avec lief."""
     binaire = lief.parse(str(path))
     if binaire is None:
         return {"imports": [], "exports": [], "sections": []}
@@ -124,21 +131,24 @@ def parse_binary(path):
     return {"imports": sorted(set(imports)), "exports": sorted(set(exports)), "sections": sections}
 
 
-def load_rules(dossier):
+def load_rules(dossier) -> yara.Rules | None:
+    """Compile toutes les regles .yar/.yara du dossier."""
     fichiers = list(Path(dossier).glob("*.yar")) + list(Path(dossier).glob("*.yara"))
     if len(fichiers) == 0:
         return None
     return yara.compile(filepaths={f.stem: str(f) for f in fichiers})
 
 
-def yara_scan(data, rules):
+def yara_scan(data: bytes, rules: yara.Rules | None) -> list[str]:
+    """Noms des regles YARA qui detectent le fichier."""
     if rules is None:
         return []
     noms = [m.rule for m in rules.match(data=data)]
     return sorted(set(noms))
 
 
-def guess_family(apis, ent):
+def guess_family(apis: list[str], ent: float) -> str:
+    """Famille probable selon les API trouvees et l'entropie."""
     for famille in APIS:
         for api in apis:
             if api in APIS[famille]:
@@ -148,7 +158,8 @@ def guess_family(apis, ent):
     return "unknown"
 
 
-def guess_mitre(iocs, famille, ent):
+def guess_mitre(iocs: dict, famille: str, ent: float) -> list[str]:
+    """Techniques MITRE ATT&CK correspondant aux indicateurs."""
     mitre = []
     if iocs["urls"] or iocs["domains"] or iocs["ips"]:
         mitre.append("T1071")  # C2
@@ -167,7 +178,8 @@ def guess_mitre(iocs, famille, ent):
     return mitre
 
 
-def base_score(iocs, apis, yara_matches, ent):
+def base_score(iocs: dict, apis: list[str], yara_matches: list[str], ent: float) -> int:
+    """Score de 0 a 10 calcule sans LLM."""
     score = 0
     if iocs["urls"] or iocs["domains"] or iocs["ips"]:
         score += 2

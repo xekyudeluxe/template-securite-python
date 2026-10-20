@@ -35,6 +35,8 @@ def test_to_latin1():
 def test_generate_report(sample_dir, rules_dir, tmp_path, fake_llm):
     result = analyze_file(sample_dir / "fake.bin", load_rules(rules_dir), fake_llm(None))
     generate_report([result], tmp_path / "out")
+    assert (tmp_path / "out" / "fake.triage.json").exists()
+    assert (tmp_path / "out" / "fake.bin.triage.json").exists()
     assert (tmp_path / "out" / f"{result['sha256']}.json").exists()
     assert (tmp_path / "out" / "report.pdf").read_bytes().startswith(b"%PDF")
 
@@ -43,5 +45,5 @@ def test_main(sample_dir, rules_dir, tmp_path, monkeypatch):
     monkeypatch.setenv("LLM_BACKEND", "none")
     out = tmp_path / "out"
     main(["--samples", str(sample_dir), "--rules", str(rules_dir), "--out", str(out)])
-    report = json.loads(next(out.glob("*.json")).read_text())
+    report = json.loads((out / "fake.triage.json").read_text())
     assert report["flag"] == "ESGI{vrai_flag_123}"
