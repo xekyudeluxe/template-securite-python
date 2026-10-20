@@ -9,3 +9,9 @@ __pycache__/
 report.pdf
 app.log
 .env
+*.png
+report.json
+out/
+app.log
+*.pdf
+.env
