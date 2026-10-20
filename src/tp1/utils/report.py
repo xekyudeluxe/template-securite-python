@@ -1,10 +1,5 @@
 import json
 
-import matplotlib
-
-matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt
 from fpdf import FPDF
 
 from tp1.utils.capture import Capture
@@ -27,35 +22,14 @@ class Report:
         content += self.title
         content += self.summary
         content += self.array
-        content += self.graph
         return content
 
     def generate(self, param: str) -> None:
         """
-        Generate graph and array
+        Generate array
         """
-        if param == "graph":
-            self.graph = self.make_graph()
-        elif param == "array":
+        if param == "array":
             self.array = self.make_array()
-
-    def make_graph(self) -> str:
-        """
-        Fait un graphique en barres des protocoles et renvoie le nom de l'image.
-        """
-        noms = list(self.capture.protocols.keys())
-        valeurs = list(self.capture.protocols.values())
-
-        plt.figure()
-        plt.bar(noms, valeurs)
-        plt.title("Protocoles reseau captures")
-        plt.xlabel("Protocole")
-        plt.ylabel("Nombre de paquets")
-        plt.tight_layout()
-        plt.savefig("protocols.png")
-        plt.close()
-
-        return "protocols.png"
 
     def make_array(self) -> str:
         """
@@ -76,11 +50,6 @@ class Report:
         pdf.set_font("Helvetica", size=14)
         pdf.cell(0, 10, self.title, ln=True)
         pdf.ln(5)
-
-        # Le graphique (si il a ete genere)
-        if self.graph:
-            pdf.image(self.graph, w=180)
-            pdf.ln(5)
 
         pdf.cell(0, 10, "Protocoles :", ln=True)
         for nom in self.capture.protocols:

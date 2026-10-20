@@ -1,5 +1,4 @@
 from scapy.all import ARP, DNS, ICMP, IP, TCP, UDP, Ether, Raw, rdpcap, sniff
-
 from src.tp1.utils.lib import choose_interface
 from tp1.utils.config import logger
 
@@ -8,8 +7,8 @@ class Capture:
     def __init__(self, pcap=None) -> None:
         self.pcap = pcap
         self.packets = []
-        self.protocols = {}   # ex : {"TCP": 128, "ARP": 12}
-        self.attacks = []     # ex : [{"type": "arp_spoofing", "attacker": "aa:bb:.."}]
+        self.protocols = {}
+        self.attacks = []
         self.flag = ""
         self.summary = ""
 
@@ -72,7 +71,7 @@ class Capture:
 
     def sort_network_protocols(self) -> str:
         """
-        Renvoie les protocoles tries du plus frequent au moins frequent.
+        Sort and return all captured network protocols
         """
         pairs = list(self.protocols.items())
         pairs.sort(key=lambda p: p[1], reverse=True)
@@ -150,21 +149,9 @@ class Capture:
 
     def find_flag(self) -> None:
         """
-        Cherche le vrai flag ESGI{...} : celui envoye par une IP attaquante.
-        Les autres flags sont des leurres.
+        Cherche le flag ESGI{...} cache dans les paquets.
         """
-        # On recupere la liste des IP attaquantes deja detectees.
-        ips_attaquantes = []
-        for attaque in self.attacks:
-            ips_attaquantes.append(attaque["attacker"])
-
         for pkt in self.packets:
-            # On ne regarde que les paquets venant d'une IP attaquante.
-            if not pkt.haslayer(IP):
-                continue
-            if pkt[IP].src not in ips_attaquantes:
-                continue
-
             data = bytes(pkt)
             if b"ESGI{" in data:
                 debut = data.find(b"ESGI{")
@@ -175,13 +162,20 @@ class Capture:
 
     def analyse(self, protocols: str) -> None:
         """
-        Analyse le trafic : compte les protocoles et cherche les attaques.
+        Analyse all captured data and return statement
+        Si un tra c est illégitime (exemple : Injection SQL, ARP
+        Spoo ng, etc)
+        a Noter la tentative d'attaque.
+        b Relever le protocole ainsi que l'adresse réseau/physique
+        de l'attaquant.
+        c (FACULTATIF) Opérer le blocage de la machine
+        attaquante.
+        Sinon a cher que tout va bien
         """
         all_protocols = self.get_all_protocols()
         sort = self.sort_network_protocols()
         logger.debug(f"All protocols: {all_protocols}")
         logger.debug(f"Sorted protocols: {sort}")
-
         self.detect_arp_spoofing()
         self.detect_port_scan()
         self.detect_sql_injection()
@@ -195,6 +189,7 @@ class Capture:
     def get_summary(self) -> str:
         """
         Return summary
+        :return:
         """
         return self.summary
 
