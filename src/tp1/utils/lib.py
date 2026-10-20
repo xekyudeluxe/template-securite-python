@@ -18,12 +18,12 @@ def choose_interface() -> str:
     """
     interfaces = get_if_list()
 
-    print("Interfaces dispo")
+    logger.info("Interfaces disponibles :")
     for i in range(len(interfaces)):
-        print(i, "->", interfaces[i])
+        logger.info(f"{i} -> {interfaces[i]}")
 
-    num = int(input("Choisis une interface"))
+    num = int(input("Choisis une interface (numero) : "))
     interface = interfaces[num]
 
-    logger.info(f"Interface choisie{interface}")
+    logger.info(f"Interface choisie : {interface}")
     return interface
