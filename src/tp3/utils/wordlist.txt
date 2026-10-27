@@ -1,0 +1,14 @@
+admin
+secret
+hidden
+flag
+captcha
+login
+challenge
+panel
+dashboard
+api
+debug
+dev
+internal
+private
