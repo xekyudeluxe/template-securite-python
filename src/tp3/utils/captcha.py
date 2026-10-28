@@ -18,14 +18,14 @@ class Captcha:
 
     def get_value(self):
         return self.value
-    def solve(self):
-        """
-        Fonction permettant la résolution du captcha.
-        """
-        self.value = "FIXME"
 
     def capture(self):
         """Telecharge l'image du captcha."""
         reponse = self.session.get(self.image_url, timeout=5)
         self.image = Image.open(io.BytesIO(reponse.content))
         return self.image
+
+    def nettoyer(self):
+        """Passe en niveaux de gris et en noir et blanc pour l'OCR."""
+        gris = self.image.convert("L")
+        return gris.point(lambda x: 0 if x < 128 else 255)
