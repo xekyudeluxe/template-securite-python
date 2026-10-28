@@ -1,49 +1,52 @@
+import io
+
+from PIL import Image
+
 from src.tp3.utils.captcha import Captcha
 
 
-def test_captcha_init():
-    # Given
-    url = "http://example.com/captcha"
-
-    # When
-    captcha = Captcha(url)
-
-    # Then
-    assert captcha.url == url
-    assert captcha.image == ""
-    assert captcha.value == ""
+def _png():
+    buf = io.BytesIO()
+    Image.new("RGB", (10, 10), "white").save(buf, "PNG")
+    return buf.getvalue()
 
 
-def test_solve():
-    # Given
-    captcha = Captcha("http://example.com/captcha")
+class FausseSession:
+    def __init__(self, contenu):
+        self.contenu = contenu
 
-    # When
-    captcha.solve()
+    def get(self, url, timeout):
+        class R:
+            pass
 
-    # Then
-    assert captcha.value == "FIXME"
+        r = R()
+        r.content = self.contenu
+        return r
 
 
 def test_capture():
-    # Given
-    captcha = Captcha("http://example.com/captcha")
-
-    # When
+    captcha = Captcha(FausseSession(_png()), "http://x/captcha.png")
     captcha.capture()
+    assert captcha.image is not None
 
-    # Then
-    # This is a minimal test since the method doesn't do anything yet
-    assert captcha.image == ""
+
+def test_nettoyer():
+    captcha = Captcha(None, "http://x")
+    captcha.image = Image.new("RGB", (10, 10), "white")
+    assert captcha.nettoyer().mode == "L"
+
+
+def test_solve(monkeypatch):
+    captcha = Captcha(None, "http://x")
+    captcha.image = Image.new("RGB", (10, 10), "white")
+    monkeypatch.setattr(
+        "src.tp3.utils.captcha.pytesseract.image_to_string",
+        lambda img, config: "ab12\n",
+    )
+    assert captcha.solve() == "AB12"
 
 
 def test_get_value():
-    # Given
-    captcha = Captcha("http://example.com/captcha")
-    captcha.value = "TEST123"
-
-    # When
-    result = captcha.get_value()
-
-    # Then
-    assert result == "TEST123"
+    captcha = Captcha(None, "http://x")
+    captcha.value = "XY9"
+    assert captcha.get_value() == "XY9"
