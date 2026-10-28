@@ -32,12 +32,3 @@ class Session:
         while not self.envoyer(self.resoudre_captcha()):
             pass
         return self.data
-
-    def get_flag(self):
-        """
-        Returns the valid flag.
-
-        Returns:
-            str: The valid flag.
-        """
-        return self.valid_flag
