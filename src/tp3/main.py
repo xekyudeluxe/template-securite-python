@@ -11,6 +11,25 @@ def parse_args(argv=None):
     parser.add_argument("--target", required=True, help="ex: http://localhost:8080")
     return parser.parse_args(argv)
 
+def run(target):
+    logger.info("Starting TP3")
+    target = target.rstrip("/")
+
+    endpoint = Recherche(target).chercher()
+    if not endpoint:
+        logger.error("Endpoint cache introuvable")
+        return
+
+    session = Session(target, endpoint)
+    data = session.obtenir_infos()
+    logger.info("FLAG1: %s", data["flag1"])
+
+    reseau = Reseau(data["host"], data["port"], data["key"])
+    reseau.connecter()
+    flag_final = reseau.jouer()
+    reseau.fermer()
+    logger.info("FLAG_FINAL: %s", flag_final)
+
 def main():
     logger.info("Starting TP3")
 
