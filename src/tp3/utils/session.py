@@ -1,29 +1,16 @@
+import requests
+
 from src.tp3.utils.captcha import Captcha
 
 
 class Session:
-    """
-    Class representing a session to solve a captcha and submit a flag.
+    """Gere la phase web : captcha puis recuperation du flag1 et des infos TCP."""
 
-    Attributes:
-        url (str): The URL of the captcha.
-        captcha_value (str): The value of the solved captcha.
-        flag_value (str): The value of the flag to submit.
-        valid_flag (str): The valid flag obtained after processing the response.
-    """
-
-    def __init__(self, url):
-        """
-        Initializes a new session with the given URL.
-
-        Args:
-            url (str): The URL of the captcha.
-        """
-        self.url = url
-        self.captcha_value = ""
-        self.flag_value = ""
-        self.valid_flag = ""
-
+    def __init__(self, target, endpoint):
+        self.target = target.rstrip("/")
+        self.endpoint = endpoint
+        self.http = requests.Session()
+        self.data = {}
     def prepare_request(self):
         """
         Prepares the request for sending by capturing and solving the captcha.
