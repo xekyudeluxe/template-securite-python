@@ -19,10 +19,13 @@ class Session:
         captcha.capture()
         return captcha.solve()
 
-    def submit_request(self):
-        """
-        Sends the flag and captcha.
-        """
+    def envoyer(self, code):
+        """Envoie le code du captcha, retourne True si accepte."""
+        reponse = self.http.post(self.endpoint, data={"captcha": code}, timeout=5)
+        if reponse.status_code == 200:
+            self.data = reponse.json()
+            return True
+        return False
 
     def process_response(self):
         """
