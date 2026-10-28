@@ -25,7 +25,7 @@ class Captcha:
         self.value = "FIXME"
 
     def capture(self):
-        """
-        Fonction permettant la capture du captcha.
-        """
-
+        """Telecharge l'image du captcha."""
+        reponse = self.session.get(self.image_url, timeout=5)
+        self.image = Image.open(io.BytesIO(reponse.content))
+        return self.image
