@@ -27,10 +27,11 @@ class Session:
             return True
         return False
 
-    def process_response(self):
-        """
-        Processes the response.
-        """
+    def obtenir_infos(self):
+        """Reessaie jusqu'a ce que le captcha passe, retourne le JSON."""
+        while not self.envoyer(self.resoudre_captcha()):
+            pass
+        return self.data
 
     def get_flag(self):
         """
