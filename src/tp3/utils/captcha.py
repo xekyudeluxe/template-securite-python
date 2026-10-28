@@ -29,3 +29,14 @@ class Captcha:
         """Passe en niveaux de gris et en noir et blanc pour l'OCR."""
         gris = self.image.convert("L")
         return gris.point(lambda x: 0 if x < 128 else 255)
+
+    def solve(self):
+        """Lit les 5 caracteres du captcha."""
+        propre = self.nettoyer()
+        texte = pytesseract.image_to_string(
+            propre,
+            config="--psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+        )
+        self.value = texte.strip().upper()
+        logger.info("Captcha lu : %s", self.value)
+        return self.value
