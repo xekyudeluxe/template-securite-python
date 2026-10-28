@@ -16,9 +16,6 @@ class Captcha:
         self.image = None
         self.value = ""
 
-    def get_value(self):
-        return self.value
-
     def capture(self):
         """Telecharge l'image du captcha."""
         reponse = self.session.get(self.image_url, timeout=5)
@@ -39,4 +36,7 @@ class Captcha:
         )
         self.value = texte.strip().upper()
         logger.info("Captcha lu : %s", self.value)
+        return self.value
+
+    def get_value(self):
         return self.value
