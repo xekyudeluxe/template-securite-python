@@ -27,7 +27,10 @@ class Recherche:
         """Retourne l'URL qui repond 200, sinon None."""
         for mot in self.lire_mots():
             url = f"{self.base_url}/{mot}"
-            reponse = requests.get(url, timeout=5)
+            try:
+                reponse = requests.get(url, timeout=5)
+            except requests.RequestException:
+                continue
             if reponse.status_code == 200:
                 logger.info("Page trouvee : %s", url)
                 return url
