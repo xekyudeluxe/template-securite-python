@@ -11,16 +11,13 @@ class Session:
         self.endpoint = endpoint
         self.http = requests.Session()
         self.data = {}
-    def prepare_request(self):
-        """
-        Prepares the request for sending by capturing and solving the captcha.
-        """
-        captcha = Captcha(self.url)
-        captcha.capture()
-        captcha.solve()
 
-        self.captcha_value = captcha.get_value()
-        self.flag_value = "FIXME"
+    def resoudre_captcha(self):
+        """Charge la page, lit le captcha et retourne le code."""
+        self.http.get(self.endpoint, timeout=5)
+        captcha = Captcha(self.http, f"{self.target}/captcha.png")
+        captcha.capture()
+        return captcha.solve()
 
     def submit_request(self):
         """
