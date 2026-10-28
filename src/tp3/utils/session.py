@@ -1,55 +1,34 @@
+import requests
+
 from src.tp3.utils.captcha import Captcha
 
 
 class Session:
-    """
-    Class representing a session to solve a captcha and submit a flag.
+    """Gere la phase web : captcha puis recuperation du flag1 et des infos TCP."""
 
-    Attributes:
-        url (str): The URL of the captcha.
-        captcha_value (str): The value of the solved captcha.
-        flag_value (str): The value of the flag to submit.
-        valid_flag (str): The valid flag obtained after processing the response.
-    """
+    def __init__(self, target, endpoint):
+        self.target = target.rstrip("/")
+        self.endpoint = endpoint
+        self.http = requests.Session()
+        self.data = {}
 
-    def __init__(self, url):
-        """
-        Initializes a new session with the given URL.
-
-        Args:
-            url (str): The URL of the captcha.
-        """
-        self.url = url
-        self.captcha_value = ""
-        self.flag_value = ""
-        self.valid_flag = ""
-
-    def prepare_request(self):
-        """
-        Prepares the request for sending by capturing and solving the captcha.
-        """
-        captcha = Captcha(self.url)
+    def resoudre_captcha(self):
+        """Charge la page, lit le captcha et retourne le code."""
+        self.http.get(self.endpoint, timeout=5)
+        captcha = Captcha(self.http, f"{self.target}/captcha.png")
         captcha.capture()
-        captcha.solve()
+        return captcha.solve()
 
-        self.captcha_value = captcha.get_value()
-        self.flag_value = "FIXME"
+    def envoyer(self, code):
+        """Envoie le code du captcha, retourne True si accepte."""
+        reponse = self.http.post(self.endpoint, data={"captcha": code}, timeout=5)
+        if reponse.status_code == 200:
+            self.data = reponse.json()
+            return True
+        return False
 
-    def submit_request(self):
-        """
-        Sends the flag and captcha.
-        """
-
-    def process_response(self):
-        """
-        Processes the response.
-        """
-
-    def get_flag(self):
-        """
-        Returns the valid flag.
-
-        Returns:
-            str: The valid flag.
-        """
-        return self.valid_flag
+    def obtenir_infos(self):
+        """Reessaie jusqu'a ce que le captcha passe, retourne le JSON."""
+        while not self.envoyer(self.resoudre_captcha()):
+            pass
+        return self.data
