@@ -1,6 +1,15 @@
+import argparse
+
 from src.tp3.utils.config import logger
+from src.tp3.utils.recherche import Recherche
+from src.tp3.utils.reseau import Reseau
 from src.tp3.utils.session import Session
 
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="TP3 - Breach the target")
+    parser.add_argument("--target", required=True, help="ex: http://localhost:8080")
+    return parser.parse_args(argv)
 
 def main():
     logger.info("Starting TP3")
