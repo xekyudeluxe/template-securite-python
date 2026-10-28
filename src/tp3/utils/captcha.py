@@ -1,7 +1,6 @@
 import io
 
 import pytesseract
-import requests
 from PIL import Image
 
 from src.tp3.utils.config import logger
